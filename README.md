@@ -1,6 +1,6 @@
 # AI Assistant
 
-A small demo app that answers questions using **your documents** (not made-up facts). You type a question in a chat window; the system finds relevant text, then a language model writes an answer and shows **which documents** it used.
+A small search app that answers questions using **your documents** (not made-up facts). You type a question in a chat window; the system finds relevant text, then a language model writes an answer and shows **which documents** it used.
 
 This repo runs everything with **Docker** so you do not need to install Java, Python, or databases by hand for a first try.
 
