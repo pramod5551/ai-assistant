@@ -1,4 +1,4 @@
-# AI Assistant
+# AI Search Assistant
 
 A small search app that answers questions using **your documents** (not made-up facts). You type a question in a chat window; the system finds relevant text, then a language model writes an answer and shows **which documents** it used.
 
@@ -76,7 +76,7 @@ sequenceDiagram
 3. **Clone this repo** and open a terminal in the project folder:
 
 ```bash
-cd ai-assistant
+cd ai-search-assistant
 ```
 
 You need a working internet connection for the first run (downloads images and the AI model).
