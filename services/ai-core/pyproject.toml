@@ -1,7 +1,7 @@
 [project]
-name = "ai-assistant-core"
+name = "ai-search-assistant-core"
 version = "0.1.0"
-description = "Python AI core service for ai-assistant (RAG + orchestration)"
+description = "Python AI core service for ai-search-assistant (RAG + orchestration)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,6 +21,12 @@ dependencies = [
   "opentelemetry-exporter-otlp-proto-http>=1.27.0,<2",
   "opentelemetry-instrumentation-fastapi>=0.48b0,<1",
   "opentelemetry-instrumentation-httpx>=0.48b0,<1",
+  "pypdf>=5.0.0",
+  "python-docx>=1.1.0",
+  "python-pptx>=1.0.0",
+  "striprtf>=0.0.26",
+  "beautifulsoup4>=4.12.0",
+  "lxml>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -36,7 +42,7 @@ mysql = ["aiomysql>=0.2.0"]
 all-databases = ["aiosqlite>=0.20.0", "aiomysql>=0.2.0"]
 
 [project.scripts]
-ai-assistant-ingest = "ai_assistant.ingestion.ingest_cli:main"
+ai-search-assistant-ingest = "ai_search_assistant.ingestion.ingest_cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

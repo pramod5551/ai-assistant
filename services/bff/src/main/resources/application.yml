@@ -1,21 +1,27 @@
 server:
   port: 8080
+  tomcat:
+    # Multi-file ingest sends JSON with several base64 payloads (up to ~15 MB each).
+    max-http-post-size: 120MB
 
 spring:
   application:
-    name: ai-assistant-bff
+    name: ai-search-assistant-bff
+  codec:
+    max-in-memory-size: 120MB
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8180/realms/ai-assistant}
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8180/realms/ai-search-assistant}
 
 bff:
   ai-core:
     base-url: ${BFF_AI_CORE_BASE_URL:http://localhost:8081}
     internal-token: ${BFF_AI_CORE_INTERNAL_TOKEN:dev-internal-token}
     forward-authorization: ${BFF_FORWARD_AUTH:true}
-    timeout-seconds: 120
+    # Must exceed ai-core LLM_REQUEST_TIMEOUT_SECONDS (Compose uses 300s for Ollama on CPU).
+    timeout-seconds: ${BFF_AI_CORE_TIMEOUT_SECONDS:330}
 
 management:
   endpoints:

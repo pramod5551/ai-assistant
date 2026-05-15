@@ -1,4 +1,4 @@
-from ai_assistant.ingestion.text_chunker import chunk_plain_text
+from ai_search_assistant.ingestion.text_chunker import chunk_plain_text
 
 
 def test_chunk_plain_text_splits_long_prose():

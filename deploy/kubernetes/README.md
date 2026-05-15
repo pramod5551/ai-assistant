@@ -7,10 +7,10 @@ The repo is structured so **BFF** (`services/bff/`) and **AI core** (`services/a
 Use your registry instead of `example/`:
 
 ```bash
-docker build -t example/ai-assistant-bff:latest services/bff
-docker build -t example/ai-assistant-core:latest services/ai-core
-docker push example/ai-assistant-bff:latest
-docker push example/ai-assistant-core:latest
+docker build -t example/ai-search-assistant-bff:latest services/bff
+docker build -t example/ai-search-assistant-core:latest services/ai-core
+docker push example/ai-search-assistant-bff:latest
+docker push example/ai-search-assistant-core:latest
 ```
 
 Edit each manifest’s `image:` before `kubectl apply`.
@@ -18,7 +18,7 @@ Edit each manifest’s `image:` before `kubectl apply`.
 Before applying workloads, create the shared internal token (edit the value first):
 
 ```bash
-kubectl apply -f ai-assistant-internal-secret.example.yaml
+kubectl apply -f ai-search-assistant-internal-secret.example.yaml
 ```
 
 Then:
@@ -28,11 +28,11 @@ kubectl apply -f ai-core-deployment.yaml
 kubectl apply -f bff-deployment.yaml
 ```
 
-Order: deploy **AI core** (and its backing **Postgres**, **Qdrant**, etc.) first, then the **BFF** so `BFF_AI_CORE_BASE_URL` resolves to the core **Service** (e.g. `http://ai-assistant-core:8081` in the same namespace).
+Order: deploy **AI core** (and its backing **Postgres**, **Qdrant**, etc.) first, then the **BFF** so `BFF_AI_CORE_BASE_URL` resolves to the core **Service** (e.g. `http://ai-search-assistant-core:8081` in the same namespace).
 
 ## Secrets
 
-- **`internal-token`**: must match **`INTERNAL_TOKEN`** on the AI core and **`BFF_AI_CORE_INTERNAL_TOKEN`** on the BFF. The example manifests use a `Secret` named `ai-assistant-internal`; replace with ExternalSecrets / your CM in production.
+- **`internal-token`**: must match **`INTERNAL_TOKEN`** on the AI core and **`BFF_AI_CORE_INTERNAL_TOKEN`** on the BFF. The example manifests use a `Secret` named `ai-search-assistant-internal`; replace with ExternalSecrets / your CM in production.
 
 ## Production notes
 

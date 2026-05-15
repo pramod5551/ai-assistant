@@ -2,9 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { formatUserFacingError } from "@/lib/api-errors";
 import type { AssistChatRequest, AssistChatResponse } from "@/lib/chat-types";
 
 const DEFAULT_BFF = "http://localhost:8080";
+/** Slightly above BFF → ai-core timeout so the proxy does not abort first. */
+const BFF_CHAT_TIMEOUT_MS = 360_000;
 
 function bffBaseUrl(): string {
   return (process.env.BFF_BASE_URL ?? DEFAULT_BFF).replace(/\/$/, "");
@@ -67,17 +70,19 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify(payload),
       cache: "no-store",
+      signal: AbortSignal.timeout(BFF_CHAT_TIMEOUT_MS),
     });
   } catch (err) {
-    const messageText =
-      err instanceof Error ? err.message : "Unknown fetch error";
+    const timedOut =
+      err instanceof Error &&
+      (err.name === "TimeoutError" || err.name === "AbortError");
     return NextResponse.json(
       {
-        error: "Could not reach assistant BFF",
-        detail: messageText,
-        bffUrl,
+        message: timedOut
+          ? formatUserFacingError(504, null)
+          : "Could not reach the assistant. Check that the backend is running.",
       },
-      { status: 502 },
+      { status: timedOut ? 504 : 502 },
     );
   }
 
@@ -91,9 +96,10 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json(
       {
-        error: "Assistant BFF returned an error",
-        status: upstream.status,
-        detail,
+        message: formatUserFacingError(
+          upstream.status >= 400 ? upstream.status : 502,
+          detail,
+        ),
       },
       { status: upstream.status >= 400 ? upstream.status : 502 },
     );

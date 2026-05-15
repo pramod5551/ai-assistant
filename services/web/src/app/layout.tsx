@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Assistant",
-  description: "Grounded assistant chat powered by your documents",
+  title: "AI Search Assistant",
+  description: "Grounded search and chat powered by your documents",
 };
 
 export const viewport: Viewport = {

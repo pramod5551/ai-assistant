@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import { formatUserFacingError } from "@/lib/api-errors";
 import type { AssistChatResponse } from "@/lib/chat-types";
 
 import styles from "./ChatWindow.module.css";
@@ -27,12 +28,12 @@ type ChatMessage = {
   };
 };
 
-const SESSION_KEY = "ai-assistant-session-id";
+const SESSION_KEY = "ai-search-assistant-session-id";
 
 const SUGGESTIONS = [
-  "What is the difference between MUST and SHOULD in IETF language?",
-  "Summarize the OWASP Top 10 project overview.",
-  "What does CISA track about cyber threats?",
+  "Summarize the main topics in my uploaded documents.",
+  "What policies or procedures are described in the indexed content?",
+  "List the key requirements or recommendations from my documents.",
 ] as const;
 
 function readOrCreateSessionId(): string {
@@ -49,7 +50,12 @@ function readOrCreateSessionId(): string {
   }
 }
 
-export function ChatWindow() {
+type ChatWindowProps = {
+  /** When true, omit outer shell/header (used inside AppShell tabs). */
+  embedded?: boolean;
+};
+
+export function ChatWindow({ embedded = false }: ChatWindowProps) {
   const formId = useId();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -109,23 +115,20 @@ export function ChatWindow() {
 
         if (!res.ok) {
           const errText = await res.text();
-          let detail = errText;
+          let payload: unknown = errText;
           try {
-            const parsed = JSON.parse(errText) as {
-              detail?: unknown;
-              error?: string;
-            };
-            if (parsed?.detail !== undefined) {
-              detail = JSON.stringify(parsed.detail);
-            } else if (parsed?.error) {
-              detail = parsed.error;
-            }
+            payload = JSON.parse(errText) as unknown;
           } catch {
             /* use raw text */
           }
-          throw new Error(
-            `Request failed (${res.status}): ${detail || res.statusText}`,
-          );
+          const friendly =
+            typeof payload === "object" &&
+            payload !== null &&
+            "message" in payload &&
+            typeof (payload as { message: unknown }).message === "string"
+              ? (payload as { message: string }).message
+              : formatUserFacingError(res.status, payload);
+          throw new Error(friendly);
         }
 
         const data = (await res.json()) as AssistChatResponse;
@@ -145,7 +148,7 @@ export function ChatWindow() {
         const msg =
           e instanceof Error
             ? e.message
-            : "Something went wrong sending the message.";
+            : "Something went wrong. Please try again.";
         setError(msg);
         setMessages((m) => [
           ...m,
@@ -179,23 +182,33 @@ export function ChatWindow() {
   };
 
   return (
-    <div className={styles.shell}>
-      <div className={styles.app}>
-        <header className={styles.header}>
-          <div className={styles.logo} aria-hidden>
-            AI
-          </div>
-          <div className={styles.headerText}>
-            <h1 className={styles.title}>Assistant</h1>
-            <p className={styles.subtitle}>
-              Answers grounded in your document libraries — with sources cited.
-            </p>
-            <span className={styles.status}>
-              <span className={styles.statusDot} aria-hidden />
-              Ready
-            </span>
-          </div>
-        </header>
+    <div
+      className={
+        embedded ? `${styles.shell} ${styles.shellEmbedded}` : styles.shell
+      }
+    >
+      <div
+        className={
+          embedded ? `${styles.app} ${styles.appEmbedded}` : styles.app
+        }
+      >
+        {!embedded && (
+          <header className={styles.header}>
+            <div className={styles.logo} aria-hidden>
+              AI
+            </div>
+            <div className={styles.headerText}>
+              <h1 className={styles.title}>Assistant</h1>
+              <p className={styles.subtitle}>
+                Answers grounded in your document libraries — with sources cited.
+              </p>
+              <span className={styles.status}>
+                <span className={styles.statusDot} aria-hidden />
+                Ready
+              </span>
+            </div>
+          </header>
+        )}
 
         <div
           className={styles.messages}

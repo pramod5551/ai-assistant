@@ -1,5 +1,5 @@
-import { ChatWindow } from "@/components/ChatWindow";
+import { AppShell } from "@/components/AppShell";
 
 export default function Home() {
-  return <ChatWindow />;
+  return <AppShell />;
 }

@@ -11,11 +11,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>dev.sharpbyte.aiassistant</groupId>
-    <artifactId>ai-assistant-bff</artifactId>
+    <groupId>dev.sharpbyte.aisearchassistant</groupId>
+    <artifactId>ai-search-assistant-bff</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>ai-assistant-bff</name>
-    <description>Standalone Spring Boot BFF (API gateway) for ai-assistant; deploy as its own pod in Kubernetes.</description>
+    <name>ai-search-assistant-bff</name>
+    <description>Standalone Spring Boot BFF (API gateway) for ai-search-assistant; deploy as its own pod in Kubernetes.</description>
 
     <properties>
         <java.version>21</java.version>

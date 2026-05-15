@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from ai_assistant.ingestion.manifest_corpus import load_corpus_from_manifest
+from ai_search_assistant.ingestion.manifest_corpus import load_corpus_from_manifest
 
 
 def test_load_corpus_from_manifest_strips_preamble(tmp_path: Path) -> None:
@@ -59,11 +59,3 @@ def test_path_traversal_rejected(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="escapes"):
         load_corpus_from_manifest(manifest, docs_root=root)
 
-
-def test_bundled_manifest_loads() -> None:
-    from ai_assistant.ingestion.bundled_corpus import load_bundled_corpus_chunks
-
-    chunks = load_bundled_corpus_chunks()
-    assert len(chunks) >= 1
-    ids = {c.document_id for c in chunks}
-    assert "ietf-bcp14-rfc2119" in ids

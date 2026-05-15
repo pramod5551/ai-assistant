@@ -3,13 +3,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: ai-assistant-core
+  name: ai-search-assistant-core
   labels:
-    app.kubernetes.io/name: ai-assistant-core
+    app.kubernetes.io/name: ai-search-assistant-core
     app.kubernetes.io/component: ai-core
 spec:
   selector:
-    app.kubernetes.io/name: ai-assistant-core
+    app.kubernetes.io/name: ai-search-assistant-core
   ports:
     - name: http
       port: 8081
@@ -18,24 +18,24 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-assistant-core
+  name: ai-search-assistant-core
   labels:
-    app.kubernetes.io/name: ai-assistant-core
+    app.kubernetes.io/name: ai-search-assistant-core
     app.kubernetes.io/component: ai-core
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: ai-assistant-core
+      app.kubernetes.io/name: ai-search-assistant-core
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: ai-assistant-core
+        app.kubernetes.io/name: ai-search-assistant-core
         app.kubernetes.io/component: ai-core
     spec:
       containers:
         - name: ai-core
-          image: example/ai-assistant-core:latest
+          image: example/ai-search-assistant-core:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -44,10 +44,10 @@ spec:
             - name: INTERNAL_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: ai-assistant-internal
+                  name: ai-search-assistant-internal
                   key: token
             - name: DATABASE_URL
-              value: "postgresql+asyncpg://aiassistant:CHANGE_ME@postgres:5432/aiassistant"
+              value: "postgresql+asyncpg://aisearchassistant:CHANGE_ME@postgres:5432/aisearchassistant"
             - name: QDRANT_URL
               value: "http://qdrant:6333"
             - name: VECTOR_COLLECTION

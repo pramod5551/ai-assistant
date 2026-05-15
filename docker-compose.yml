@@ -45,6 +45,8 @@ services:
     build:
       context: ./services/ai-core
       dockerfile: Dockerfile
+    # Do not load repo-root .env — it often points at localhost and overrides DATABASE_URL below.
+    env_file: []
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,6 +54,18 @@ services:
         condition: service_started
       ollama:
         condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 180s
     environment:
       INTERNAL_TOKEN: dev-internal-token
       DATABASE_URL: postgresql+asyncpg://aiassistant:aiassistant@postgres:5432/aiassistant
@@ -64,8 +78,9 @@ services:
       EMBED_MODEL: BAAI/bge-small-en-v1.5
       VECTOR_SEARCH_LIMIT: "24"
       LLM_BACKEND: auto
-      # Llama via Ollama (same Docker network). App derives LLM_BASE_URL as http://ollama:11434/v1
+      # Llama via Ollama (same Docker network)
       OLLAMA_BASE_URL: http://ollama:11434
+      LLM_BASE_URL: http://ollama:11434/v1
       LLM_MODEL: llama3.2:3b
       # CPU inference can be slow; allow long generations during local testing
       LLM_REQUEST_TIMEOUT_SECONDS: "300"
@@ -77,11 +92,13 @@ services:
       context: ./services/bff
       dockerfile: Dockerfile
     depends_on:
-      - ai-core
+      ai-core:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: dev
       BFF_AI_CORE_BASE_URL: http://ai-core:8081
       BFF_AI_CORE_INTERNAL_TOKEN: dev-internal-token
+      BFF_AI_CORE_TIMEOUT_SECONDS: "330"
       BFF_FORWARD_AUTH: "false"
     ports:
       - "8080:8080"

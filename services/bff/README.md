@@ -1,4 +1,4 @@
-# ai-assistant-bff
+# ai-search-assistant-bff
 
 Standalone **Spring Boot** service (separate Maven project and Docker image from `services/ai-core`). Deploy as its **own Kubernetes Deployment**; it calls the AI core over HTTP using `BFF_AI_CORE_BASE_URL`.
 
@@ -7,7 +7,7 @@ Standalone **Spring Boot** service (separate Maven project and Docker image from
 ```bash
 cd "$(dirname "$0")"
 mvn -q package
-java -jar target/ai-assistant-bff-*-SNAPSHOT.jar
+java -jar target/ai-search-assistant-bff-*-SNAPSHOT.jar
 ```
 
 Local dev with AI core on 8081:
@@ -22,7 +22,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev \
 From repo root:
 
 ```bash
-docker build -t ai-assistant-bff:latest -f services/bff/Dockerfile services/bff
+docker build -t ai-search-assistant-bff:latest -f services/bff/Dockerfile services/bff
 ```
 
 ## Kubernetes

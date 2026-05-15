@@ -8,6 +8,12 @@
     env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+.shellEmbedded {
+  min-height: 0;
+  flex: 1;
+  padding: 0;
+}
+
 .app {
   display: flex;
   flex-direction: column;
@@ -21,12 +27,23 @@
   box-shadow: var(--shadow-app);
 }
 
+.appEmbedded {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: hidden;
+}
+
 @media (min-width: 640px) {
-  .shell {
+  .shell:not(.shellEmbedded) {
     padding: 1rem;
   }
 
-  .app {
+  .app:not(.appEmbedded) {
     min-height: calc(100dvh - 2rem);
     min-height: calc(100vh - 2rem);
     border-radius: var(--radius-xl);

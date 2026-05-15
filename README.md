@@ -19,7 +19,7 @@ When you run Docker Compose, these parts work together:
 | **postgres** | Saves chat audit logs | port 5432 (internal) |
 | **ollama** | Runs a local **Llama** model for answers | http://localhost:11434 |
 
-Sample documents live in [`services/ai-core/ai_assistant/ingestion/bundled_docs/`](services/ai-core/ai_assistant/ingestion/bundled_docs/) (including **RFC 2119** about words like MUST and SHOULD).
+There is **no bundled sample corpus**. Upload your own files on the **Ingest** tab (or use the ingest CLI with a manifest) before chatting.
 
 ---
 
@@ -65,7 +65,7 @@ sequenceDiagram
     Web-->>Browser: show answer and citations
 ```
 
-**Ingest (separate workflow):** when you run `ingest_cli`, only **ai-core**, **Qdrant**, and the **embedder** (FastEmbed inside **ai-core**) are involved — that path loads documents into Qdrant; it does not use the BFF or Ollama.
+**Ingest (separate workflow):** when you upload files in the UI or run `ingest_cli`, only **ai-core**, **Qdrant**, and the **embedder** (FastEmbed inside **ai-core**) are involved — that path loads documents into Qdrant; it does not use the BFF or Ollama.
 
 ---
 
@@ -124,30 +124,37 @@ docker compose up -d --force-recreate ai-core
 
 You may see a warning like `onnxruntime cpuid_info warning: Unknown CPU vendor`. That is normal in some VMs and can be ignored.
 
-### Step 3 — Load the sample documents into search
+### Step 3 — Ingest your documents
 
-On a **fresh** install, documents are loaded automatically when Qdrant is empty.
+1. Open **http://localhost:3000** and click the **Ingest** tab.
+2. Upload one or more files (drag and drop or file picker).
+3. Adjust chunking options if needed, then click **Run ingestion** (use **Preview chunks** for a dry run).
 
-If search results look wrong (see [Fix common problems](#fix-common-problems) below), reload the bundled sample docs:
+When it finishes, you should see something like: `Ingest complete: N document(s), M chunk(s)`.
 
-```bash
-docker compose build --no-cache ai-core
-docker compose up -d --force-recreate ai-core
-docker compose exec ai-core python -m ai_assistant.ingestion.ingest_cli --recreate-collection --yes
-```
+**Supported upload formats** (extracted to text on the server, then embedded for search):
 
-When it finishes, you should see something like: `Done: upserted N points into 'assistant_chunks'`.
+| Type | Extensions |
+|------|------------|
+| Plain text | `.txt`, `.md`, `.csv`, `.json` |
+| PDF | `.pdf` |
+| Word | `.docx` (native), `.doc` (LibreOffice in Docker image) |
+| Other | `.rtf`, `.html`, `.pptx` |
+
+Binary files are sent as base64 from the browser; the default max size is **10 MB** per file (`INGEST_MAX_UPLOAD_BYTES`).
+
+This uses the same pipeline as the CLI (`ingest_cli --manifest …`) but through the browser.
 
 ### Step 4 — Open the chat and ask a question
 
-1. Open **http://localhost:3000** in your browser.
-2. Type a question, for example:
+1. Switch to the **Chat** tab.
+2. Ask a question about content in the files you ingested, for example:
 
-   > In IETF requirements language, what is the difference between MUST and SHOULD?
+   > Summarize the main topics in my uploaded documents.
 
 3. Press **Send** and wait (local CPU answers can take **30 seconds or more**).
 
-A good answer will mention **RFC 2119** and cite a document id like **`ietf-bcp14-rfc2119`**.
+A good answer will cite **document ids** from your uploads (shown under the reply).
 
 ### Step 5 — Stop everything (when you are done)
 
@@ -170,26 +177,54 @@ You can call the API directly:
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/assist/chat \
   -H 'Content-Type: application/json' \
-  -d '{"message":"In IETF requirements language, what is the difference between MUST and SHOULD?","structured_output":false}' | jq .
+  -d '{"message":"Summarize the main topics in my uploaded documents.","structured_output":false}' | jq .
 ```
 
 ---
 
 ## Fix common problems
 
-### “Grounded reply (no LLM configured)”
+### “no language model is configured” or “language model could not answer”
 
-The app found documents but **no chat model** is connected. Do **Step 2** (`ollama pull`) and make sure **ollama** and **ai-core** are running:
+**Search worked** (you see sources / context length) but the **chat model** did not produce text.
+
+**If the message says “not configured”** — `OLLAMA_BASE_URL` and `LLM_MODEL` are missing in the environment ai-core sees. For local runs, set them in [`.env`](.env) (see [`.env.example`](.env.example)). For Docker, recreate ai-core after changing [`docker-compose.yml`](docker-compose.yml).
+
+**If it mentions HTTP 404 or “model not found”** — pull the model once:
+
+```bash
+docker compose exec ollama ollama pull llama3.2:3b
+docker compose up -d --force-recreate ai-core
+```
+
+**If it mentions “Cannot reach”** — start Ollama and ai-core:
 
 ```bash
 docker compose ps
+docker compose up -d ollama ai-core
 ```
 
-### “I do not have enough grounded information…” and citations look wrong
+**Check what ai-core sees:**
 
-Example bad citations: `doc-policy-001`, `doc-external-99` — those are **not** from this repo’s sample set.
+```bash
+docker compose exec ai-core python -c "
+from ai_search_assistant.config import get_settings
+s = get_settings()
+print('backend', s.resolved_llm_backend())
+print('base_url', s.llm_base_url)
+print('model', s.llm_model)
+"
+```
 
-**Fix:** reload the bundled documents (**Step 3**). After that, citations should include names like **`ietf-bcp14-rfc2119`**.
+### “I do not have enough grounded information…” or empty citations
+
+The vector index has **no matching chunks** for your question. Common causes:
+
+- You have not ingested any documents yet (**Step 3**).
+- You ingested under a **library** your user cannot access (dev profile allows all libraries).
+- The question does not overlap with your document text.
+
+**Fix:** open the **Ingest** tab, upload files, run ingestion, then ask again. To re-index from scratch, enable **Recreate collection** on ingest (destructive).
 
 ### Ingest command fails with `unexpected keyword argument 'ge'`
 
@@ -201,11 +236,26 @@ docker compose up -d --force-recreate ai-core
 docker compose exec ai-core grep "_bounded_int" /app/ai_assistant/ingestion/ingest_cli.py
 ```
 
-If that `grep` shows a match, run ingest again (**Step 3**).
+If that `grep` shows a match, rebuild **ai-core** and ingest again from the UI (**Step 3**).
 
 ### Chat is very slow
 
 Local **Llama on CPU** is slow. Use the smaller `llama3.2:1b` model, or give Ollama a GPU (Linux + NVIDIA — see comments in [`docker-compose.yml`](docker-compose.yml) under **ollama**).
+
+### `password authentication failed for user "aiassistant"` (ai-core won’t start)
+
+Postgres stores credentials in the **`pgdata` volume** on first boot. If you changed `POSTGRES_USER` / `POSTGRES_PASSWORD` in `docker-compose.yml` after the volume was created, the running database still has the **old** user/password.
+
+**Fix (dev — wipes DB audit data):**
+
+```bash
+docker compose down -v
+docker compose up --build -d
+```
+
+Then re-ingest your documents on the **Ingest** tab.
+
+**Without wiping data:** connect with the credentials Postgres was originally created with, or alter the role manually inside the postgres container.
 
 ### Port already in use
 
@@ -280,7 +330,7 @@ Most defaults work with Docker Compose. Common variables:
 | `OLLAMA_BASE_URL` | `http://ollama:11434` | Local Llama server |
 | `LLM_MODEL` | `llama3.2:3b` | Model name in Ollama |
 | `VECTOR_SEARCH_LIMIT` | `24` | Max chunks considered per question |
-| `SEED_VECTOR_COLLECTION_ON_STARTUP` | `true` (if set) | Auto-load sample docs when Qdrant is empty |
+| `SEED_VECTOR_COLLECTION_ON_STARTUP` | `false` | Reserved; no bundled seed data — ingest via UI or CLI |
 
 Full list: [`.env.example`](.env.example) and the table in the original config docs below.
 
@@ -301,12 +351,16 @@ Full list: [`.env.example`](.env.example) and the table in the original config d
 | **`OLLAMA_BASE_URL`** | — | If set, app uses `{OLLAMA}/v1` when `LLM_BASE_URL` is empty. |
 | **`LLM_REQUEST_TIMEOUT_SECONDS`** | `300` in Compose | Increase if CPU generation times out. |
 
-**Ingest CLI** (reload documents):
+**Ingest CLI** (batch from a `manifest.json` on disk — advanced):
 
 ```bash
-docker compose exec ai-core python -m ai_assistant.ingestion.ingest_cli --dry-run
-docker compose exec ai-core python -m ai_assistant.ingestion.ingest_cli --recreate-collection --yes
+docker compose exec ai-core python -m ai_assistant.ingestion.ingest_cli \
+  --manifest /path/to/manifest.json --dry-run
+docker compose exec ai-core python -m ai_assistant.ingestion.ingest_cli \
+  --manifest /path/to/manifest.json --recreate-collection --yes
 ```
+
+For most users, the **Ingest** tab in the web UI is simpler.
 
 </details>
 
@@ -329,6 +383,6 @@ When not using the `dev` profile, users need a JWT with:
 
 ## Next steps for developers
 
-- Add your own documents via [`manifest.json`](services/ai-core/ai_assistant/ingestion/bundled_docs/manifest.json) and run the ingest CLI.
+- Upload documents on the **Ingest** tab, or batch-ingest with `ingest_cli --manifest` and a local `manifest.json`.
 - Swap Ollama for OpenAI, vLLM, or another OpenAI-compatible API via `LLM_BASE_URL` + `LLM_MODEL`.
 - Optional: OpenTelemetry, custom vector DBs — see code under `services/ai-core/ai_assistant/`.
