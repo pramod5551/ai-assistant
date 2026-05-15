@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-assistant-bff
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8180/realms/ai-assistant}
+
+bff:
+  ai-core:
+    base-url: ${BFF_AI_CORE_BASE_URL:http://localhost:8081}
+    internal-token: ${BFF_AI_CORE_INTERNAL_TOKEN:dev-internal-token}
+    forward-authorization: ${BFF_FORWARD_AUTH:true}
+    timeout-seconds: 120
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  pattern:
+    level: "%5p [%X{correlationId:-}]"

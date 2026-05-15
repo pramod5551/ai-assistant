@@ -1,0 +1,103 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aiassistant
+      POSTGRES_PASSWORD: aiassistant
+      POSTGRES_DB: aiassistant
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiassistant -d aiassistant"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "5432:5432"
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.5
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+
+  # Llama (and other models) via Ollama — OpenAI-compatible /v1/chat/completions for the AI core.
+  # First run: pull a model after the container is up, e.g.
+  #   docker compose exec ollama ollama pull llama3.2:3b
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    # Optional: NVIDIA GPU on Linux (requires nvidia-container-toolkit)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  ai-core:
+    build:
+      context: ./services/ai-core
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_started
+    environment:
+      INTERNAL_TOKEN: dev-internal-token
+      DATABASE_URL: postgresql+asyncpg://aiassistant:aiassistant@postgres:5432/aiassistant
+      AUDIT_BACKEND: auto
+      VECTOR_BACKEND: auto
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: assistant_chunks
+      QDRANT_DISTANCE: cosine
+      EMBEDDING_BACKEND: auto
+      EMBED_MODEL: BAAI/bge-small-en-v1.5
+      VECTOR_SEARCH_LIMIT: "24"
+      LLM_BACKEND: auto
+      # Llama via Ollama (same Docker network). App derives LLM_BASE_URL as http://ollama:11434/v1
+      OLLAMA_BASE_URL: http://ollama:11434
+      LLM_MODEL: llama3.2:3b
+      # CPU inference can be slow; allow long generations during local testing
+      LLM_REQUEST_TIMEOUT_SECONDS: "300"
+    ports:
+      - "8081:8081"
+
+  bff:
+    build:
+      context: ./services/bff
+      dockerfile: Dockerfile
+    depends_on:
+      - ai-core
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      BFF_AI_CORE_BASE_URL: http://ai-core:8081
+      BFF_AI_CORE_INTERNAL_TOKEN: dev-internal-token
+      BFF_FORWARD_AUTH: "false"
+    ports:
+      - "8080:8080"
+
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile
+    depends_on:
+      - bff
+    environment:
+      BFF_BASE_URL: http://bff:8080
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  qdrant_data:
+  ollama_data:

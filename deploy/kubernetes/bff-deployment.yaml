@@ -1,0 +1,66 @@
+# BFF — separate Deployment/Service (Spring Boot). AI core must be reachable at BFF_AI_CORE_BASE_URL.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-assistant-bff
+  labels:
+    app.kubernetes.io/name: ai-assistant-bff
+    app.kubernetes.io/component: bff
+spec:
+  selector:
+    app.kubernetes.io/name: ai-assistant-bff
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-assistant-bff
+  labels:
+    app.kubernetes.io/name: ai-assistant-bff
+    app.kubernetes.io/component: bff
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ai-assistant-bff
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ai-assistant-bff
+        app.kubernetes.io/component: bff
+    spec:
+      containers:
+        - name: bff
+          image: example/ai-assistant-bff:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: BFF_AI_CORE_BASE_URL
+              value: "http://ai-assistant-core:8081"
+            - name: BFF_AI_CORE_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-assistant-internal
+                  key: token
+            - name: BFF_FORWARD_AUTH
+              value: "false"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "dev"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20

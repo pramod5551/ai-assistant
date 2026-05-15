@@ -1,0 +1,70 @@
+# AI core — separate Deployment/Service (FastAPI). Adjust image and env for your cluster.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-assistant-core
+  labels:
+    app.kubernetes.io/name: ai-assistant-core
+    app.kubernetes.io/component: ai-core
+spec:
+  selector:
+    app.kubernetes.io/name: ai-assistant-core
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-assistant-core
+  labels:
+    app.kubernetes.io/name: ai-assistant-core
+    app.kubernetes.io/component: ai-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ai-assistant-core
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ai-assistant-core
+        app.kubernetes.io/component: ai-core
+    spec:
+      containers:
+        - name: ai-core
+          image: example/ai-assistant-core:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8081
+          env:
+            - name: INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-assistant-internal
+                  key: token
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://aiassistant:CHANGE_ME@postgres:5432/aiassistant"
+            - name: QDRANT_URL
+              value: "http://qdrant:6333"
+            - name: VECTOR_COLLECTION
+              value: "assistant_chunks"
+            - name: AUDIT_BACKEND
+              value: "auto"
+            - name: VECTOR_BACKEND
+              value: "auto"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
